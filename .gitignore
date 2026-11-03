@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
+
+
+# AI development tools
+/.agents/
+/.claude/
+/.cursor/
+/.devin/
+/.windsurf/
+/skills-lock.json
+
+# Local testing scripts
+/test-concurrent-login.ps1

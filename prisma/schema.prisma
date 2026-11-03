@@ -1,0 +1,296 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProfileType {
+  PERSONAL
+  BUSINESS
+}
+
+enum AccountType {
+  CASH
+  MPESA
+  BANK
+  SAVINGS
+  INVESTMENT
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profiles FinancialProfile[]
+}
+
+model FinancialProfile {
+  id        String      @id @default(cuid())
+  name      String
+  type      ProfileType
+  currency  String      @default("KES")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  clients      Client[]
+  invoices     Invoice[]
+  InvoiceSequence  InvoiceSequence[]
+}
+
+model Account {
+  id             String      @id @default(cuid())
+  name           String
+  type           AccountType
+  openingBalance Decimal     @default(0) @db.Decimal(15, 2)
+  currency       String      @default("KES")
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  profileId         String
+  profile           FinancialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+  InvoicePayment  InvoicePayment[]
+  transfersSent     Transfer[]       @relation("TransferFromAccount")
+  transfersReceived Transfer[]       @relation("TransferToAccount")
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  name      String
+  type      CategoryType
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([profileId, name, type])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  type        TransactionType
+  amount      Decimal         @db.Decimal(15, 2)
+  description String?
+  date        DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  InvoicePayment  InvoicePayment?
+
+  reversedInvoicePayment InvoicePayment? @relation("PaymentReversalTransaction")
+}
+
+model Transfer {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(15, 2)
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fromAccountId String
+  fromAccount   Account @relation("TransferFromAccount", fields: [fromAccountId], references: [id])
+
+  toAccountId String
+  toAccount   Account @relation("TransferToAccount", fields: [toAccountId], references: [id])
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([date])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(15, 2)
+  month     Int
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id])
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([profileId, categoryId, month, year])
+  @@index([profileId])
+  @@index([categoryId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  address   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+
+  @@index([profileId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String
+  status        InvoiceStatus @default(DRAFT)
+
+  issueDate DateTime  @default(now())
+  dueDate   DateTime?
+
+  subtotal  Decimal @default(0) @db.Decimal(15, 2)
+  taxAmount Decimal @default(0) @db.Decimal(15, 2)
+  total     Decimal @default(0) @db.Decimal(15, 2)
+
+  currency String  @default("KES")
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id])
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  items    InvoiceItem[]
+  payments  InvoicePayment[]
+
+  @@unique([profileId, invoiceNumber])
+  @@index([clientId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  description String
+
+  quantity  Decimal @default(1) @db.Decimal(12, 2)
+  unitPrice Decimal @db.Decimal(15, 2)
+  lineTotal Decimal @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(15, 2)
+  date      DateTime @default(now())
+
+  method    String?
+  reference String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+
+  transactionId String      @unique
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  idempotencyKey String? @unique
+
+  isReversed     Boolean   @default(false)
+  reversedAt     DateTime?
+  reversalReason String?
+
+  reversalTransactionId String?      @unique
+  reversalTransaction   Transaction? @relation("PaymentReversalTransaction", fields: [reversalTransactionId], references: [id])
+
+  @@index([invoiceId])
+  @@index([date])
+}
+
+model InvoiceSequence {
+  id         String @id @default(cuid())
+  year       Int
+  lastNumber Int    @default(0)
+
+  profileId String
+  profile   FinancialProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, year])
+}
+
+model LoginRateLimit {
+  id           String   @id @default(cuid())
+  identifier   String   @unique
+  attempts     Int      @default(0)
+  windowStart  DateTime @default(now())
+  blockedUntil DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([blockedUntil])
+}
