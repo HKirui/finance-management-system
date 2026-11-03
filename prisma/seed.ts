@@ -1,34 +1,53 @@
 import "dotenv/config";
 import prisma from "../lib/prisma";
+import bcrypt from "bcryptjs";
 
 async function main() {
-  const user = await prisma.user.upsert({
-    where: {
-      email: "admin@finance.local",
-    },
-    update: {},
-    create: {
-      name: "Finance Admin",
-      email: "admin@finance.local",
-    },
-  });
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
 
-  const personalProfile = await prisma.financialProfile.findFirst({
-    where: {
-      userId: user.id,
-      type: "PERSONAL",
-    },
-  });
+      if (!adminEmail || !adminPassword || adminPassword.length < 12) {
+       throw new Error(
+         "ADMIN_EMAIL and ADMIN_PASSWORD (minimum 12 characters) are required."
+            );
+            }
 
-  if (!personalProfile) {
-    await prisma.financialProfile.create({
+     const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+   const user = await prisma.user.upsert({
+        where: {
+          email: adminEmail,
+               },
+            update: {},
+             create: {
+              name: "Finance Admin",
+              email: adminEmail,
+              passwordHash,
+              },
+        });
+
+    if (!user.passwordHash) {
+      throw new Error(
+         "Administrator already exists without a password. Setup stopped."
+         );
+         }
+
+         const personalProfile = await prisma.financialProfile.findFirst({
+            where: {
+               userId: user.id,
+                   type: "PERSONAL",
+                    },
+                 });
+
+       if (!personalProfile) {
+      await prisma.financialProfile.create({
       data: {
         name: "Personal",
         type: "PERSONAL",
         userId: user.id,
-      },
-    });
-  }
+         },
+        });
+    }
 
   const businessProfile = await prisma.financialProfile.findFirst({
     where: {
