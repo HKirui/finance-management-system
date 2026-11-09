@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { recordInvoicePaymentWithState, type PaymentActionState,} from "../actions";
+import { recordInvoicePaymentWithState, type PaymentActionState } from "../actions";
 import PaymentSubmitButton from "./PaymentSubmitButton";
 
 type PaymentFormProps = {
@@ -19,6 +19,10 @@ const initialState: PaymentActionState = {
   error: null,
 };
 
+const label = "mb-1 block text-xs font-medium text-slate-600 dark:text-neutral-400";
+const field =
+  "min-h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-100/10";
+
 export default function PaymentForm({
   invoiceId,
   idempotencyKey,
@@ -31,30 +35,23 @@ export default function PaymentForm({
   );
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="invoiceId" value={invoiceId} />
-      <input
-        type="hidden"
-        name="idempotencyKey"
-        value={idempotencyKey}
-      />
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
       {state.error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
         >
           {state.error}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div>
-          <label
-            htmlFor="accountId"
-            className="mb-2 block text-sm font-medium dark:text-neutral-300"
-          >
-            Receiving Account *
+          <label htmlFor="accountId" className={label}>
+            Receiving account *
           </label>
 
           <select
@@ -62,7 +59,7 @@ export default function PaymentForm({
             name="accountId"
             required
             defaultValue=""
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
+            className={field}
           >
             <option value="" disabled>
               Select receiving account
@@ -77,32 +74,31 @@ export default function PaymentForm({
         </div>
 
         <div>
-          <label
-            htmlFor="amount"
-            className="mb-2 block text-sm font-medium dark:text-neutral-300"
-          >
-            Payment Amount (KES) *
+          <label htmlFor="amount" className={label}>
+            Payment amount *
           </label>
 
-          <input
-            id="amount"
-            name="amount"
-            type="number"
-            min="0.01"
-            step="0.01"
-            max={balanceDue}
-            required
-            placeholder="Enter payment amount"
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-          />
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400 dark:text-neutral-500">
+              KES
+            </span>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={balanceDue}
+              required
+              placeholder="0.00"
+              className={`${field} pl-11 tabular-nums`}
+            />
+          </div>
         </div>
 
         <div>
-          <label
-            htmlFor="reference"
-            className="mb-2 block text-sm font-medium dark:text-neutral-300"
-          >
-            Payment Reference
+          <label htmlFor="reference" className={label}>
+            Payment reference
           </label>
 
           <input
@@ -110,16 +106,13 @@ export default function PaymentForm({
             name="reference"
             type="text"
             placeholder="M-Pesa code / Bank reference"
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
+            className={field}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="notes"
-            className="mb-2 block text-sm font-medium dark:text-neutral-300"
-          >
-            Payment Notes
+          <label htmlFor="notes" className={label}>
+            Payment notes
           </label>
 
           <input
@@ -127,18 +120,19 @@ export default function PaymentForm({
             name="notes"
             type="text"
             placeholder="Optional notes"
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
+            className={field}
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-4 dark:border-neutral-800">
         <div>
-          <p className="text-xs text-gray-500 dark:text-neutral-400">
-            Outstanding Balance
+          <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+            Outstanding balance
           </p>
-          <p className="text-lg font-semibold dark:text-white">
-            KES {Number(balanceDue).toLocaleString("en-KE", {
+          <p className="font-[family-name:var(--font-fraunces)] text-lg tabular-nums">
+            KES{" "}
+            {Number(balanceDue).toLocaleString("en-KE", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}

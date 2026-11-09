@@ -38,60 +38,94 @@ export default function EditBudgetForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        className="grid size-8 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
         title="Edit budget"
+        aria-label={`Edit ${categoryName} budget`}
       >
-        <Pencil size={16} />
+        <Pencil size={14} strokeWidth={1.8} />
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                Edit Budget
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 text-left backdrop-blur-sm sm:items-center sm:p-5">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`edit-budget-${budgetId}`}
+            className="flex w-full max-w-sm flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-950 sm:rounded-xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 dark:border-neutral-800">
+              <div>
+                <h2
+                  id={`edit-budget-${budgetId}`}
+                  className="font-[family-name:var(--font-fraunces)] text-base tracking-tight text-slate-900 dark:text-neutral-100"
+                >
+                  Edit budget
+                </h2>
 
-              <p className="mt-1 text-sm text-gray-500">
-                Update the budget for {categoryName}.
-              </p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+                  Update the budget for {categoryName}.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setIsOpen(false)}
+                className="grid size-8 shrink-0 place-items-center rounded-lg text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
+              >
+                ×
+              </button>
             </div>
 
-            <form action={formAction} className="space-y-4">
+            <form action={formAction}>
               <input
                 type="hidden"
                 name="budgetId"
                 value={budgetId}
               />
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Budget Amount (KES)
-                </label>
+              <div className="space-y-3 px-4 py-4">
+                <div>
+                  <label
+                    htmlFor={`edit-budget-amount-${budgetId}`}
+                    className="mb-1 block text-xs font-medium text-slate-600 dark:text-neutral-400"
+                  >
+                    Budget amount
+                  </label>
 
-                <input
-                  type="number"
-                  name="amount"
-                  defaultValue={amount}
-                  min="0.01"
-                  step="0.01"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-                  required
-                />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400 dark:text-neutral-500">
+                      KES
+                    </span>
+                    <input
+                      id={`edit-budget-amount-${budgetId}`}
+                      type="number"
+                      name="amount"
+                      defaultValue={amount}
+                      min="0.01"
+                      step="0.01"
+                      className="min-h-9 w-full rounded-lg border border-slate-300 bg-white pl-11 pr-3 text-[13px] tabular-nums text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:border-neutral-400 dark:focus:ring-neutral-100/10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {state.message && !state.success && (
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                  >
+                    {state.message}
+                  </div>
+                )}
               </div>
 
-              {state.message && !state.success && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {state.message}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+              <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-neutral-800">
                 <button
                   type="button"
                   disabled={isPending}
                   onClick={() => setIsOpen(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 disabled:opacity-50"
+                  className="min-h-9 rounded-lg border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900"
                 >
                   Cancel
                 </button>
@@ -99,9 +133,9 @@ export default function EditBudgetForm({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-9 rounded-lg bg-slate-900 px-5 text-[13px] font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
                 >
-                  {isPending ? "Saving..." : "Save Changes"}
+                  {isPending ? "Saving..." : "Save changes"}
                 </button>
               </div>
             </form>

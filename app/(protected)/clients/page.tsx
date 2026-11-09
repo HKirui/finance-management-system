@@ -1,14 +1,46 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ChevronDown, Plus, Search } from "lucide-react";
+import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import prisma from "@/lib/prisma";
 import { createClient, toggleClientStatus } from "./actions";
-import Link from "next/link";
+
+const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
+const hanken = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken" });
+
+const display = "font-[family-name:var(--font-fraunces)]";
+const muted = "text-slate-500 dark:text-neutral-400";
+const card =
+  "rounded-xl border border-slate-200 bg-white dark:border-neutral-800 dark:bg-neutral-950";
+const label = "mb-1 block text-xs font-medium text-slate-600 dark:text-neutral-400";
+const field =
+  "min-h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-100/10";
+const ghost =
+  "inline-flex min-h-8 items-center rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900";
+
+const newClientFields = [
+  { id: "name", label: "Client name *", type: "text", placeholder: "Enter client name", required: true },
+  { id: "company", label: "Company", type: "text", placeholder: "Company or organization" },
+  { id: "email", label: "Email", type: "email", placeholder: "client@example.com" },
+  { id: "phone", label: "Phone number", type: "tel", placeholder: "+254..." },
+  { id: "address", label: "Address", type: "text", placeholder: "Client location" },
+  { id: "notes", label: "Notes", type: "text", placeholder: "Additional information" },
+];
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "?";
 
 type ClientsPageProps = {
   searchParams: Promise<{
     q?: string;
     status?: string;
-   }>;
+  }>;
 };
 
 export default async function ClientsPage({
@@ -16,26 +48,26 @@ export default async function ClientsPage({
 }: ClientsPageProps) {
   const session = await auth();
 
-if (!session?.user?.email) {
-  redirect("/login");
-}
-  const { q, status} = await searchParams;
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
+  const { q, status } = await searchParams;
   const search = q?.trim() ?? "";
 
   const clients = await prisma.client.findMany({
     where: {
       profile: {
         type: "BUSINESS",
-        user:{
+        user: {
           email: session.user.email,
         },
       },
 
-  ...(status === "active"
-    ? { isActive: true }
-    : status === "inactive"
-      ? { isActive: false }
-      : {}),
+      ...(status === "active"
+        ? { isActive: true }
+        : status === "inactive"
+          ? { isActive: false }
+          : {}),
 
       ...(search
         ? {
@@ -73,256 +105,240 @@ if (!session?.user?.email) {
     },
   });
 
+  const filter = status === "active" || status === "inactive" ? status : "all";
+
+  const filterHref = (value: string) => {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (value !== "all") params.set("status", value);
+    const query = params.toString();
+    return query ? `/clients?${query}` : "/clients";
+  };
+
+  const filters = [
+    { id: "all", label: "All" },
+    { id: "active", label: "Active" },
+    { id: "inactive", label: "Inactive" },
+  ];
+
   return (
-    <main className="p-4 lg:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+    <main
+      className={`${fraunces.variable} ${hanken.variable} mx-auto w-full max-w-6xl space-y-4 px-4 py-5 font-[family-name:var(--font-hanken)] text-slate-900 dark:text-neutral-100 sm:px-6`}
+    >
+      <header>
+        <p className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] ${muted}`}>
+          <span className="size-1.5 rounded-full bg-indigo-400" />
+          K-Link Solutions
+        </p>
+        <h1 className={`${display} mt-1.5 text-2xl font-normal tracking-tight sm:text-3xl`}>
           Clients
         </h1>
+        <p className={`mt-1 text-xs ${muted}`}>Manage K-Link Solutions clients.</p>
+      </header>
 
-        <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-          Manage K-Link Solutions clients.
-        </p>
-      </div>
+      {/* Add new client (dropdown) */}
+      <details key={`add-${clients.length}`} className={`${card} group`}>
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 text-[13px] font-medium marker:hidden hover:bg-slate-50 dark:hover:bg-neutral-900/60 [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2.5">
+            <span className="grid size-7 place-items-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-300">
+              <Plus size={15} strokeWidth={2} />
+            </span>
+            Add new client
+          </span>
+          <ChevronDown
+            size={16}
+            className="text-slate-400 transition-transform group-open:rotate-180"
+          />
+        </summary>
 
-{/* Client Search Bar */}
-<form
-  action="/clients"
-  method="GET"
-  className="mb-4 flex flex-wrap items-center gap-3"
->
-  <input
-    type="search"
-    name="q"
-    defaultValue={search}
-    placeholder="Search by name, company, phone or email..."
-    className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-  />
-
-<select
-  name="status"
-  aria-label="Filter clients by status"
-  defaultValue={
-    status === "active" || status === "inactive"
-      ? status
-      : "all"
-  }
-  className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
->
-  <option value="all">All Clients</option>
-  <option value="active">Active Clients</option>
-  <option value="inactive">Inactive Clients</option>
-</select>
-
-  <button
-    type="submit"
-    className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
-  >
-    Search
-  </button>
-
-  <a
-    href="/clients"
-    className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
-  >
-    Clear
-  </a>
-</form>
-
-<form
-  action={createClient}
-  className="mb-6 rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#090909]"
->
-  <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-    Add New Client
-  </h2>
-
-  <div className="grid gap-4 md:grid-cols-2">
-
-    <div>
-      <label htmlFor="name" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Client Name *
-      </label>
-      <input
-        id="name"
-        name="name"
-        type="text"
-        required
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="Enter client name"
-      />
-    </div>
-
-    <div>
-      <label htmlFor="company" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Company
-      </label>
-      <input
-        id="company"
-        name="company"
-        type="text"
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="Company or organization"
-      />
-    </div>
-
-    <div>
-      <label htmlFor="email" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Email
-      </label>
-      <input
-        id="email"
-        name="email"
-        type="email"
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="client@example.com"
-      />
-    </div>
-
-    <div>
-      <label htmlFor="phone" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Phone Number
-      </label>
-      <input
-        id="phone"
-        name="phone"
-        type="tel"
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="+254..."
-      />
-    </div>
-
-    <div>
-      <label htmlFor="address" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Address
-      </label>
-      <input
-        id="address"
-        name="address"
-        type="text"
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="Client location"
-      />
-    </div>
-
-    <div>
-      <label htmlFor="notes" className="mb-1 block text-sm text-gray-700 dark:text-neutral-300">
-        Notes
-      </label>
-      <input
-        id="notes"
-        name="notes"
-        type="text"
-        className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-[#111111] dark:text-white"
-        placeholder="Additional information"
-      />
-    </div>
-
-  </div>
-
-  <button
-    type="submit"
-    className="mt-5 rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
-  >
-    Save Client
-  </button>
-</form>
-
-      <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#090909]">
-        {clients.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-neutral-400">
-            No clients registered yet.
-          </p>
-        ) : (
-         <div className="overflow-x-auto">
-  <table className="w-full text-left text-sm">
-    <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-neutral-800 dark:bg-[#111111] dark:text-neutral-400">
-      <tr>
-        <th className="px-4 py-3 font-semibold">Client Name</th>
-        <th className="px-4 py-3 font-semibold">Company</th>
-        <th className="px-4 py-3 font-semibold">Email</th>
-        <th className="px-4 py-3 font-semibold">Phone</th>
-        <th className="px-4 py-3 font-semibold">Status</th>
-        <th className="px-4 py-3 font-semibold">Actions</th>
-      </tr>
-    </thead>
-
-    <tbody className="divide-y divide-gray-200 dark:divide-neutral-800">
-      {clients.map((client) => (
-        <tr
-          key={client.id}
-          className="transition hover:bg-gray-50 dark:hover:bg-[#111111]"
+        <form
+          action={createClient}
+          className="border-t border-slate-200 px-4 py-4 dark:border-neutral-800"
         >
-          <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-            {client.name}
-          </td>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {newClientFields.map((item) => (
+              <div key={item.id} className={item.id === "notes" ? "sm:col-span-2" : ""}>
+                <label htmlFor={item.id} className={label}>
+                  {item.label}
+                </label>
+                <input
+                  id={item.id}
+                  name={item.id}
+                  type={item.type}
+                  required={item.required}
+                  placeholder={item.placeholder}
+                  className={field}
+                />
+              </div>
+            ))}
+          </div>
 
-          <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">
-            {client.company || "Individual"}
-          </td>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="submit"
+              className="min-h-9 rounded-lg bg-slate-900 px-5 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+            >
+              Save client
+            </button>
+          </div>
+        </form>
+      </details>
 
-          <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">
-            {client.email || "—"}
-          </td>
+      {/* Search and filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <form action="/clients" method="GET" className="flex min-w-0 flex-1 basis-72 items-center gap-2">
+          <input type="hidden" name="status" value={filter === "all" ? "" : filter} />
 
-          <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">
-            {client.phone || "—"}
-          </td>
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500"
+            />
+            <input
+              type="search"
+              name="q"
+              defaultValue={search}
+              placeholder="Search name, company, phone or email"
+              aria-label="Search clients"
+              className={`${field} min-h-10 pl-9`}
+            />
+          </div>
 
-          <td className="px-4 py-3">
-            <span
-              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                client.isActive
-                  ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
-                  : "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400"
+          <button
+            type="submit"
+            className="min-h-10 rounded-lg border border-slate-300 px-4 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900"
+          >
+            Search
+          </button>
+
+          {(search || filter !== "all") && (
+            <Link href="/clients" className={`text-xs underline-offset-2 hover:underline ${muted}`}>
+              Clear
+            </Link>
+          )}
+        </form>
+
+        <nav
+          aria-label="Filter clients by status"
+          className="flex gap-0.5 rounded-full bg-slate-100 p-1 dark:bg-neutral-900"
+        >
+          {filters.map((item) => (
+            <Link
+              key={item.id}
+              href={filterHref(item.id)}
+              aria-current={filter === item.id ? "page" : undefined}
+              className={`flex min-h-9 items-center rounded-full px-4 text-[13px] font-medium transition-colors ${
+                filter === item.id
+                  ? "bg-indigo-300 text-neutral-950"
+                  : "text-slate-600 hover:text-slate-900 dark:text-neutral-400 dark:hover:text-neutral-100"
               }`}
             >
-              {client.isActive ? "Active" : "Inactive"}
-            </span>
-          </td>
-
-           <td className="px-4 py-3">
-       <div className="flex items-center gap-2">
-       <Link
-  href={`/clients/${client.id}`}
-  className="inline-block rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-           View
-         </Link>
-    <Link
-      href={`/clients/${client.id}/edit`}
-      className="inline-block rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-    >
-      Edit
-    </Link>
-
-    <form action={toggleClientStatus}>
-      <input
-        type="hidden"
-        name="id"
-        value={client.id}
-      />
-
-      <button
-        type="submit"
-        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-          client.isActive
-            ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-            : "border-green-200 text-green-700 hover:bg-green-50 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950"
-        }`}
-      >
-        {client.isActive ? "Deactivate" : "Activate"}
-      </button>
-    </form>
-  </div>
-</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
-        )}
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </div>
+
+      {/* Client list */}
+      <section className={`${card} overflow-hidden`}>
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5 dark:border-neutral-800 sm:px-5">
+          <h2 className={`${display} text-base`}>Client list</h2>
+          <span className={`text-xs ${muted}`}>
+            {clients.length} {clients.length === 1 ? "client" : "clients"}
+          </span>
+        </div>
+
+        {clients.length === 0 ? (
+          <p className={`px-6 py-14 text-center text-xs ${muted}`}>
+            {search || filter !== "all"
+              ? "No clients match your search."
+              : "No clients registered yet."}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left">
+              <thead>
+                <tr className={`border-b border-slate-100 text-[11px] uppercase tracking-wider dark:border-neutral-800 ${muted}`}>
+                  <th className="px-4 py-3 font-medium sm:px-5">Client</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium sm:px-5">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100 dark:divide-neutral-800/80">
+                {clients.map((client) => (
+                  <tr
+                    key={client.id}
+                    className="transition-colors hover:bg-slate-50 dark:hover:bg-neutral-900/60"
+                  >
+                    <td className="px-4 py-3 sm:px-5">
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-indigo-50 text-[11px] font-bold text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-300">
+                          {initials(client.name)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-medium">{client.name}</p>
+                          <p className={`truncate text-[11px] ${muted}`}>
+                            {client.company || "Individual"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className={`px-4 py-3 text-[13px] ${muted}`}>
+                      {client.email || "—"}
+                    </td>
+
+                    <td className={`whitespace-nowrap px-4 py-3 text-[13px] tabular-nums ${muted}`}>
+                      {client.phone || "—"}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-2 text-xs">
+                        <span
+                          className={`size-1.5 rounded-full ${client.isActive ? "bg-emerald-400" : "bg-slate-400 dark:bg-neutral-600"}`}
+                        />
+                        <span className={client.isActive ? "" : muted}>
+                          {client.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 sm:px-5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link href={`/clients/${client.id}`} className={ghost}>
+                          View
+                        </Link>
+
+                        <Link href={`/clients/${client.id}/edit`} className={ghost}>
+                          Edit
+                        </Link>
+
+                        <form action={toggleClientStatus}>
+                          <input type="hidden" name="id" value={client.id} />
+
+                          <button
+                            type="submit"
+                            className={`min-h-8 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+                              client.isActive
+                                ? "text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-neutral-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                                : "text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                            }`}
+                          >
+                            {client.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

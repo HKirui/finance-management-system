@@ -18,9 +18,9 @@ export default function CancelInvoiceButton() {
           event.preventDefault();
         }
       }}
-      className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+      className="min-h-10 rounded-lg border border-slate-300 px-4 text-[13px] font-medium text-slate-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-rose-900 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
     >
-      {pending ? "Cancelling..." : "Cancel Invoice"}
+      {pending ? "Cancelling..." : "Cancel invoice"}
     </button>
   );
 }

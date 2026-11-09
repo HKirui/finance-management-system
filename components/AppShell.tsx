@@ -16,7 +16,7 @@ export default function AppShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100 transition-colors dark:bg-black">
+    <div id="app-shell" className="flex min-h-screen bg-background">
       <Sidebar />
 
       <div className="min-w-0 flex-1">

@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Fraunces, Hanken_Grotesk } from "next/font/google";
 import prisma from "@/lib/prisma";
+import CashFlowChart from "@/components/CashFlowChart";
+import SpendingDonut from "@/components/SpendingDonut";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
 const hanken = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken" });
@@ -23,29 +25,68 @@ const formatKES = (value: number) => `KES ${value.toLocaleString("en-KE")}`;
 
 /* ---------- small chart components (server-rendered, no client JS) ---------- */
 
-function LineChart({ lines, height = 200, compact = false }: {
+function LineChart({
+  lines,
+  height = 200,
+  compact = false,
+}: {
   lines: { color: string; values: number[] }[];
   height?: number;
   compact?: boolean;
 }) {
   const W = 640;
-  const pad = compact ? 4 : 10;
-  const all = lines.flatMap((l) => l.values);
-  const min = Math.min(0, ...all);
-  const max = Math.max(1, ...all);
-  const x = (i: number, n: number) => (n <= 1 ? 0 : (i / (n - 1)) * W);
-  const y = (v: number) => height - pad - ((v - min) / (max - min)) * (height - pad * 2);
-  const d = (vals: number[]) =>
-    vals
-      .map((v, i) => {
-        const px = x(i, vals.length);
-        const py = y(v);
-        if (i === 0) return `M${px},${py}`;
-        const prevX = x(i - 1, vals.length);
-        const mid = (prevX + px) / 2;
-        return `C${mid},${y(vals[i - 1])} ${mid},${py} ${px},${py}`;
+  const left = compact ? 4 : 62;
+  const right = compact ? 4 : 12;
+  const top = compact ? 4 : 16;
+  const bottom = compact ? 4 : 16;
+
+  const all = lines.flatMap((line) => line.values);
+  const minValue = Math.min(0, ...all);
+  const maxValue = Math.max(0, ...all);
+
+  const range = Math.max(1, maxValue - minValue);
+  const padding = range * 0.1;
+
+  const min = Math.min(0, minValue - padding);
+  const max = Math.max(0, maxValue + padding);
+
+  const plotWidth = W - left - right;
+  const plotHeight = height - top - bottom;
+
+  const x = (index: number, count: number) =>
+    left + (count <= 1 ? plotWidth / 2 : (index / (count - 1)) * plotWidth);
+
+  const y = (value: number) =>
+    top + ((max - value) / (max - min)) * plotHeight;
+
+  const path = (values: number[]) =>
+    values
+      .map((value, index) => {
+        const px = x(index, values.length);
+        const py = y(value);
+
+        if (index === 0) return `M${px},${py}`;
+
+        const previousX = x(index - 1, values.length);
+        const midpoint = (previousX + px) / 2;
+
+        return `C${midpoint},${y(values[index - 1])} ${midpoint},${py} ${px},${py}`;
       })
       .join(" ");
+
+  const ticks = Array.from({ length: 5 }, (_, index) =>
+    min + ((max - min) * index) / 4
+  );
+
+  const formatAxis = (value: number) => {
+    if (Math.abs(value) >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)}M`;
+    }
+    if (Math.abs(value) >= 1_000) {
+      return `${(value / 1_000).toFixed(1)}k`;
+    }
+    return value.toFixed(0);
+  };
 
   return (
     <svg
@@ -53,21 +94,75 @@ function LineChart({ lines, height = 200, compact = false }: {
       preserveAspectRatio={compact ? "none" : undefined}
       className={compact ? "h-9 w-24" : "h-auto w-full"}
       role="img"
-      aria-label="Net cash flow trend"
+      aria-label="Monthly net cash flow trend in Kenyan shillings"
     >
       {!compact &&
-        [0.25, 0.5, 0.75].map((f) => (
-          <line key={f} x1={0} x2={W} y1={height * f} y2={height * f} className="stroke-slate-200 dark:stroke-neutral-800" />
+        ticks.map((tick, index) => (
+          <g key={index}>
+            <line
+              x1={left}
+              x2={W - right}
+              y1={y(tick)}
+              y2={y(tick)}
+              className="stroke-slate-200 dark:stroke-neutral-800"
+              strokeDasharray="3 5"
+            />
+            <text
+              x={left - 10}
+              y={y(tick) + 4}
+              textAnchor="end"
+              className="fill-slate-500 text-[12px] dark:fill-neutral-400"
+            >
+              {formatAxis(tick)}
+            </text>
+          </g>
         ))}
-      {lines.map((l) => (
-        <g key={l.color}>
-          {!compact && <path d={`${d(l.values)} L${W},${y(0)} L0,${y(0)} Z`} fill={l.color} opacity={0.1} />}
-          <path d={d(l.values)} fill="none" stroke={l.color} strokeWidth={compact ? 2.5 : 3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+
+      {!compact && min < 0 && max > 0 && (
+        <line
+          x1={left}
+          x2={W - right}
+          y1={y(0)}
+          y2={y(0)}
+          className="stroke-slate-400 dark:stroke-neutral-500"
+          strokeWidth={1.2}
+        />
+      )}
+
+      {lines.map((line, lineIndex) => (
+        <g key={lineIndex}>
+          <path
+            d={path(line.values)}
+            fill="none"
+            stroke={line.color}
+            strokeWidth={compact ? 2.5 : 2.5}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+
+          {!compact &&
+            line.values.map((value, index) => (
+              <circle
+                key={index}
+                cx={x(index, line.values.length)}
+                cy={y(value)}
+                r={4}
+                fill={line.color}
+                stroke="currentColor"
+                strokeWidth={1.5}
+                className="text-white dark:text-neutral-950"
+              >
+                <title>
+                  {`Month ${index + 1}: KES ${value.toLocaleString("en-KE")}`}
+                </title>
+              </circle>
+            ))}
         </g>
       ))}
     </svg>
   );
 }
+
 
 function Donut({ segments, centre }: { segments: { name: string; value: number; color: string }[]; centre: string }) {
   const sum = segments.reduce((t, s) => t + s.value, 0);
@@ -107,57 +202,283 @@ function Donut({ segments, centre }: { segments: { name: string; value: number; 
   );
 }
 
-function Flow({ items }: { items: { name: string; short: string; color: string; income: number; spent: number }[] }) {
-  const total = items.reduce((t, i) => t + i.income, 0);
-  if (total <= 0) {
-    return <p className="mt-6 text-sm text-slate-500 dark:text-neutral-400">No income recorded this month yet.</p>;
-  }
-  const H = 180, GAP = 16, X0 = 130, X1 = 470, S = H / total;
-  const out: ReactNode[] = [];
-  let ly = 0;
-  let ry = 0;
 
-  items.forEach((it, i) => {
-    if (it.income <= 0) return;
-    const spentFlow = Math.min(it.spent, it.income);
-    const parts = [
-      { label: "spent", amt: spentFlow, color: GOLD },
-      { label: "kept", amt: it.income - spentFlow, color: it.color },
-    ];
-    out.push(<rect key={`l${i}`} x={X0 - 8} y={ly} width={8} height={it.income * S} rx={3} fill={it.color} />);
-    out.push(
-      <text key={`lt${i}`} x={0} y={ly + (it.income * S) / 2 + 4} className="fill-slate-700 text-[12px] dark:fill-neutral-200">
-        {it.name}
-      </text>
+function Flow({
+  items,
+}: {
+  items: {
+    name: string;
+    short: string;
+    color: string;
+    income: number;
+    spent: number;
+  }[];
+}) {
+  const formatMoney = (value: number) =>
+    `KES ${value.toLocaleString("en-KE", {
+      maximumFractionDigits: 2,
+    })}`;
+
+  const active = items.filter(
+    (item) => item.income > 0 || item.spent > 0
+  );
+
+  if (active.length === 0) {
+    return (
+      <p className="mt-6 text-sm text-slate-500 dark:text-neutral-400">
+        No income or expenses recorded this month yet.
+      </p>
     );
-    let off = ly;
-    parts.forEach((p) => {
-      const h = p.amt * S;
-      if (h <= 0) return;
-      const yl = off + h / 2;
-      const yr = ry + h / 2;
-      const xm = (X0 + X1) / 2;
-      out.push(<path key={`p${i}${p.label}`} d={`M${X0},${yl} C${xm},${yl} ${xm},${yr} ${X1},${yr}`} fill="none" stroke={p.color} strokeOpacity={0.3} strokeWidth={h} />);
-      out.push(<rect key={`r${i}${p.label}`} x={X1} y={ry} width={8} height={h} rx={3} className="fill-slate-500 dark:fill-neutral-300" />);
-      out.push(
-        <text key={`rt${i}${p.label}`} x={X1 + 18} y={ry + h / 2 + 4} className="fill-slate-700 text-[12px] dark:fill-neutral-200">
-          {`${it.short} ${p.label}`}
-        </text>
-      );
-      off += h;
-      ry += h + GAP;
-    });
-    ly += it.income * S + GAP;
+  }
+
+  const X0 = 150;
+  const X1 = 490;
+  const WIDTH = 700;
+  const TOP = 24;
+  const GAP = 28;
+  const MIN_FLOW = 5;
+
+  const maxAmount = Math.max(
+    1,
+    ...active.flatMap((item) => [
+      item.income,
+      item.spent,
+    ])
+  );
+
+  const scale = 68 / maxAmount;
+
+  type FlowPart = {
+    label: string;
+    amount: number;
+    color: string;
+    dashed?: boolean;
+  };
+
+  const rows = active.map((item) => {
+    const income = Math.max(0, item.income);
+    const expenses = Math.max(0, item.spent);
+    const covered = Math.min(income, expenses);
+    const surplus = Math.max(0, income - expenses);
+    const shortfall = Math.max(0, expenses - income);
+
+    const parts: FlowPart[] = [];
+
+    if (covered > 0) {
+      parts.push({
+        label: "Expenses",
+        amount: covered,
+        color: GOLD,
+      });
+    }
+
+    if (surplus > 0) {
+      parts.push({
+        label: "Surplus",
+        amount: surplus,
+        color: item.color,
+      });
+    }
+
+    if (shortfall > 0) {
+      parts.push({
+        label: "Excess expenses",
+        amount: shortfall,
+        color: "#fb7185",
+        dashed: true,
+      });
+    }
+
+    const flowHeight = (amount: number) =>
+      Math.max(MIN_FLOW, amount * scale);
+
+    const partsHeight = parts.reduce(
+      (sum, part) => sum + flowHeight(part.amount) + 12,
+      0
+    );
+
+    return {
+      item,
+      income,
+      expenses,
+      net: income - expenses,
+      parts,
+      height: Math.max(92, partsHeight + 16),
+    };
   });
 
+  let cursor = TOP;
+
+  const content = rows.map((row, index) => {
+    const y = cursor;
+    cursor += row.height + GAP;
+
+    const sourceY = y + row.height / 2;
+    const sourceHeight =
+      row.income > 0
+        ? Math.max(MIN_FLOW, row.income * scale)
+        : MIN_FLOW;
+
+    let targetY = y + 10;
+
+    return (
+      <g key={`${row.item.name}-${index}`}>
+        {/* Source: income */}
+        <rect
+          x={X0 - 8}
+          y={sourceY - sourceHeight / 2}
+          width={8}
+          height={sourceHeight}
+          rx={3}
+          fill={row.item.color}
+        />
+
+        <text
+          x={X0 - 18}
+          y={sourceY - 7}
+          textAnchor="end"
+          className="fill-slate-800 text-[12px] font-semibold dark:fill-neutral-200"
+        >
+          {row.item.short}
+        </text>
+
+        <text
+          x={X0 - 18}
+          y={sourceY + 10}
+          textAnchor="end"
+          className="fill-slate-500 text-[10px] dark:fill-neutral-400"
+        >
+          {formatMoney(row.income)}
+        </text>
+
+        {row.parts.map((part, partIndex) => {
+          const thickness = Math.max(
+            MIN_FLOW,
+            part.amount * scale
+          );
+
+          const rightY = targetY + thickness / 2;
+
+          // Shortfall is not represented as income.
+          // It enters the expenses side separately.
+          const leftX = part.dashed ? X0 + 105 : X0;
+          const leftY = part.dashed
+            ? rightY - 22
+            : sourceY;
+
+          const midX = (leftX + X1) / 2;
+
+          const element = (
+            <g key={`${part.label}-${partIndex}`}>
+              <path
+                d={`M${leftX},${leftY}
+                    C${midX},${leftY}
+                     ${midX},${rightY}
+                     ${X1},${rightY}`}
+                fill="none"
+                stroke={part.color}
+                strokeOpacity={part.dashed ? 0.65 : 0.45}
+                strokeWidth={thickness}
+                className="cursor-pointer transition-allduration-200 hover:opacity-100"
+              >
+                <title>
+                  {`${row.item.name} — ${part.label}: ${formatMoney(
+                    part.amount
+                  )}`}
+                </title>
+              </path>
+
+              <rect
+                x={X1}
+                y={targetY}
+                width={8}
+                height={thickness}
+                rx={3}
+                fill={part.color}
+              >
+                <title>
+                  {`${part.label}: ${formatMoney(part.amount)}`}
+                </title>
+              </rect>
+
+              <text
+                x={X1 + 18}
+                y={rightY - 3}
+                className="fill-slate-700 text-[11px] font-medium dark:fill-neutral-200"
+              >
+                {part.label}
+              </text>
+
+              <text
+                x={X1 + 18}
+                y={rightY + 11}
+                className="fill-slate-500 text-[10px] dark:fill-neutral-400"
+              >
+                {formatMoney(part.amount)}
+              </text>
+            </g>
+          );
+
+          targetY += thickness + 12;
+
+          return element;
+        })}
+
+        <title>
+          {`${row.item.name}
+Income: ${formatMoney(row.income)}
+Expenses: ${formatMoney(row.expenses)}
+Net cash flow: ${formatMoney(row.net)}`}
+        </title>
+      </g>
+    );
+  });
+
+  const chartHeight = cursor + 12;
+
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 640 ${H + GAP * 4}`} className="mt-4 h-auto w-full min-w-[480px] max-h-52" role="img" aria-label="Flow of this month's income into spending and savings">
-        {out}
-      </svg>
+    <div className="mt-4 space-y-3">
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${WIDTH} ${chartHeight}`}
+          className="h-auto w-full min-w-[520px]"
+          role="img"
+          aria-label="Monthly money flow showing income, expenses, surplus and additional expenses"
+        >
+          {content}
+        </svg>
+      </div>
+
+      <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500 dark:border-neutral-800 dark:text-neutral-400">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: GOLD }}
+          />
+          Expenses covered by income
+        </span>
+
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          Surplus
+        </span>
+
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-rose-400" />
+          Expenses exceeding income
+        </span>
+      </div>
+
+      <p className="text-[11px] leading-relaxed text-slate-400 dark:text-neutral-500">
+        Surplus is income minus expenses when positive.
+        Additional expenses indicate spending above this
+        month&apos;s income; their funding source is not assumed.
+        Hover over a connection to see its amount.
+      </p>
     </div>
   );
 }
+
 
 const card = "rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 sm:p-5";
 const display = "font-[family-name:var(--font-fraunces)]";
@@ -276,10 +597,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const spendSegments =
     view === "all"
       ? visible.map((p) => ({ name: p.name, value: p.monthlyExpenses, color: colorOf(p.type) }))
-      : [...top, ...(otherTotal > 0 ? [["Other", otherTotal] as [string, number]] : [])].map(([name, value], i) => ({
+      : sorted.map(([name, value], index) => ({
           name,
           value,
-          color: PALETTE[i % PALETTE.length],
+          color: PALETTE[index % PALETTE.length],
         }));
   const spendTotal = visible.reduce((t, p) => t + p.monthlyExpenses, 0);
 
@@ -435,7 +756,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
                 </div>
               </div>
               <div className="mt-4">
-                <LineChart lines={visible.map((p) => ({ color: colorOf(p.type), values: p.series }))} />
+                <CashFlowChart
+                   months={months.map((m) => `${m.label} ${m.year}`)}
+                      lines={visible.map((p) => ({
+                      name: p.type === "BUSINESS" ? "Business" : "Personal",
+                      color: colorOf(p.type),
+                      values: p.series,
+                      }))}
+                      />
               </div>
               <div className={`mt-1 flex justify-between text-xs ${muted}`}>
                 {months.map((m) => (
@@ -447,7 +775,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
             <div className={card}>
               <h2 className={`${display} text-base`}>{view === "all" ? "Spending split" : `${title} spending`}</h2>
               <p className={`mt-1 text-xs ${muted}`}>This month</p>
-              <Donut segments={spendSegments} centre={formatKES(spendTotal)} />
+              <SpendingDonut segments={spendSegments} total={spendTotal} /> 
             </div>
           </section>
 
@@ -455,8 +783,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
             <div className={`${card} lg:col-span-2`}>
               {view === "all" && (
                 <>
-                  <h2 className={`${display} text-base`}>Where the money goes</h2>
-                  <p className={`mt-1 text-xs ${muted}`}>This month&apos;s income, spent or kept, each workspace kept apart</p>
+                  <h2 className={`${display} text-base`}>Monthly Money Flow</h2>
+                  <p className={`mt-1 text-xs ${muted}`}>Income, expenses and monthly surplus across your financial profiles</p>
                   <Flow
                     items={visible.map((p) => ({
                       name: p.name,

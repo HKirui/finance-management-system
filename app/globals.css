@@ -1,27 +1,78 @@
+
 @import "tailwindcss";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Light theme */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --background: #f4f6f8;
+  --foreground: #172334;
+
+  --surface: #fafbfc;
+  --surface-muted: #eef1f5;
+  --border-color: #e4e8ed;
+
+  --text-muted: #64748b;
+}
+
+/* Dark theme */
+:root.dark {
+  color-scheme: dark;
+
+  --background: #09090b;
+  --foreground: #f4f4f5;
+
+  --surface: #17171b;
+  --surface-muted: #202025;
+  --border-color: #29292f;
+
+  --text-muted: #a1a1aa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-soft: var(--border-color);
+  --color-text-muted: var(--text-muted);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  min-height: 100%;
 }
 
 body {
+  min-height: 100vh;
+  margin: 0;
+
   background: var(--background);
   color: var(--foreground);
+
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Shared theme transition */
+html.theme-transition,
+html.theme-transition body,
+html.theme-transition #app-shell,
+html.theme-transition #app-shell * {
+  transition-property: background-color, color, border-color, fill, stroke !important;
+  transition-duration: 80ms !important;
+  transition-timing-function: ease-out !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition body,
+  html.theme-transition #app-shell,
+  html.theme-transition #app-shell * {
+    transition-duration: 0ms !important;
+  }
 }

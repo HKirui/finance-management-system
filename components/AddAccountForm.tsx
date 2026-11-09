@@ -12,155 +12,183 @@ type AddAccountFormProps = {
   profiles: Profile[];
 };
 
+const label = "mb-1 block text-xs font-medium text-slate-600 dark:text-neutral-400";
+const field =
+  "min-h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-100/10";
+
 export default function AddAccountForm({
   profiles,
 }: AddAccountFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const initialState = {
-  success: false,
-  message: "",
-};
+    success: false,
+    message: "",
+  };
 
-const [state, formAction, isPending] = useActionState(
-  createAccount,
-  initialState
-);
+  const [state, formAction, isPending] = useActionState(
+    createAccount,
+    initialState
+  );
 
-useEffect(() => {
-  if (state.success && !isPending) {
-    setIsOpen(false);
-  }
-}, [state, isPending]);
+  useEffect(() => {
+    if (state.success && !isPending) {
+      setIsOpen(false);
+    }
+  }, [state, isPending]);
 
   if (!isOpen) {
     return (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-slate-900 px-4 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
       >
-        + Add Account
+        <span aria-hidden className="text-base leading-none">+</span>
+        Add account
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-5">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-account-title"
+        className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white text-left shadow-2xl dark:border-neutral-800 dark:bg-neutral-950 sm:rounded-xl"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 dark:border-neutral-800">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Add Account
+            <h2
+              id="add-account-title"
+              className="font-[family-name:var(--font-fraunces)] text-base tracking-tight text-slate-900 dark:text-neutral-100"
+            >
+              Add account
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
               Add a personal or K-Link financial account.
             </p>
           </div>
 
           <button
             type="button"
+            aria-label="Close"
             onClick={() => setIsOpen(false)}
-            className="text-2xl text-gray-400 hover:text-gray-700"
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
           >
             ×
           </button>
         </div>
 
-        <form action={formAction} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Financial Profile
-            </label>
+        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <div className="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto px-4 py-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label htmlFor="acc-profile" className={label}>
+                Financial profile
+              </label>
 
-            <select
-              name="profileId"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            >
-              <option value="">Select profile</option>
+              <select
+                id="acc-profile"
+                name="profileId"
+                className={field}
+                required
+              >
+                <option value="">Select profile</option>
 
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="acc-name" className={label}>
+                Account name
+              </label>
+
+              <input
+                id="acc-name"
+                type="text"
+                name="name"
+                placeholder="e.g. KCB Personal"
+                className={field}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="acc-type" className={label}>
+                Account type
+              </label>
+
+              <select
+                id="acc-type"
+                name="type"
+                className={field}
+                required
+              >
+                <option value="">Select type</option>
+                <option value="MPESA">M-Pesa</option>
+                <option value="BANK">Bank</option>
+                <option value="CASH">Cash</option>
+                <option value="SAVINGS">Savings</option>
+                <option value="INVESTMENT">Investment</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="acc-opening" className={label}>
+                Opening balance
+              </label>
+
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400 dark:text-neutral-500">
+                  KES
+                </span>
+                <input
+                  id="acc-opening"
+                  type="number"
+                  name="openingBalance"
+                  min="0"
+                  step="0.01"
+                  defaultValue="0"
+                  className={`${field} pl-11 tabular-nums`}
+                  required
+                />
+              </div>
+            </div>
+
+            {state.message && !state.success && (
+              <div
+                role="alert"
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 sm:col-span-2"
+              >
+                {state.message}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Account Name
-            </label>
-
-            <input
-              type="text"
-              name="name"
-              placeholder="e.g. KCB Personal"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Account Type
-            </label>
-
-            <select
-              name="type"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            >
-              <option value="">Select type</option>
-              <option value="MPESA">M-Pesa</option>
-              <option value="BANK">Bank</option>
-              <option value="CASH">Cash</option>
-              <option value="SAVINGS">Savings</option>
-              <option value="INVESTMENT">Investment</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Opening Balance (KES)
-            </label>
-
-            <input
-              type="number"
-              name="openingBalance"
-              min="0"
-              step="0.01"
-              defaultValue="0"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            />
-          </div>
-
-          {state.message && !state.success && (
-           <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-              {state.message}
-               </div>
-                    )}
-
-          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+          <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-neutral-800">
             <button
               type="button"
               disabled={isPending}
               onClick={() => setIsOpen(false)}
-              className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 disabled:opacity-50"
-               >
-                Cancel
-              </button>
+              className="min-h-9 rounded-lg border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900"
+            >
+              Cancel
+            </button>
 
-           <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-             >
-              {isPending ? "Creating..." : "Create Account"}
-           </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="min-h-9 rounded-lg bg-slate-900 px-5 text-[13px] font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+            >
+              {isPending ? "Creating..." : "Create account"}
+            </button>
           </div>
         </form>
       </div>

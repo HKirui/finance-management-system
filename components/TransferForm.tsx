@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { ArrowLeftRight } from "lucide-react";
 import { createTransfer } from "@/app/actions/transfers";
 
 type Account = {
@@ -17,6 +18,10 @@ type Profile = {
 type TransferFormProps = {
   profiles: Profile[];
 };
+
+const label = "mb-1 block text-xs font-medium text-slate-600 dark:text-neutral-400";
+const field =
+  "min-h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-100/10 dark:disabled:bg-neutral-900/50 dark:disabled:text-neutral-600";
 
 export default function TransferForm({
   profiles,
@@ -54,169 +59,199 @@ export default function TransferForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-neutral-700 dark:bg-transparent dark:text-neutral-200 dark:hover:bg-neutral-900"
       >
-        Transfer Money
+        <ArrowLeftRight size={15} strokeWidth={1.8} />
+        Transfer money
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-5">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transfer-title"
+        className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white text-left shadow-2xl dark:border-neutral-800 dark:bg-neutral-950 sm:rounded-xl"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-3 dark:border-neutral-800">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Transfer Money
+            <h2
+              id="transfer-title"
+              className="font-[family-name:var(--font-fraunces)] text-base tracking-tight text-slate-900 dark:text-neutral-100"
+            >
+              Transfer money
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
-              Move money between accounts in the same financial profile.
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-neutral-400">
+              Move money between accounts in the same profile.
             </p>
           </div>
 
           <button
             type="button"
+            aria-label="Close"
             onClick={() => setIsOpen(false)}
-            className="text-2xl text-gray-400 hover:text-gray-700"
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-900 dark:hover:text-neutral-200"
           >
             ×
           </button>
         </div>
 
-        <form action={formAction} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Financial Profile
-            </label>
+        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <div className="grid min-h-0 grid-cols-1 gap-3 overflow-y-auto px-4 py-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label htmlFor="tr-profile" className={label}>
+                Financial profile
+              </label>
 
-            <select
-              value={profileId}
-              onChange={(event) => {setProfileId(event.target.value); setFromAccountId(""); setToAccountId("");}}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            >
-              <option value="">Select profile</option>
+              <select
+                id="tr-profile"
+                value={profileId}
+                onChange={(event) => {
+                  setProfileId(event.target.value);
+                  setFromAccountId("");
+                  setToAccountId("");
+                }}
+                className={field}
+                required
+              >
+                <option value="">Select profile</option>
 
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="tr-from" className={label}>
+                From
+              </label>
+
+              <select
+                id="tr-from"
+                name="fromAccountId"
+                value={fromAccountId}
+                onChange={(event) => setFromAccountId(event.target.value)}
+                disabled={!selectedProfile}
+                className={field}
+                required
+              >
+                <option value="">Source account</option>
+
+                {selectedProfile?.accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="tr-to" className={label}>
+                To
+              </label>
+
+              <select
+                id="tr-to"
+                name="toAccountId"
+                value={toAccountId}
+                onChange={(event) => setToAccountId(event.target.value)}
+                disabled={!selectedProfile}
+                className={field}
+                required
+              >
+                <option value="">Destination account</option>
+
+                {selectedProfile?.accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="tr-amount" className={label}>
+                Amount
+              </label>
+
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-400 dark:text-neutral-500">
+                  KES
+                </span>
+                <input
+                  id="tr-amount"
+                  type="number"
+                  name="amount"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  className={`${field} pl-11 tabular-nums`}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="tr-date" className={label}>
+                Date
+              </label>
+
+              <input
+                id="tr-date"
+                type="date"
+                name="date"
+                className={`${field} dark:[color-scheme:dark]`}
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="tr-description" className={label}>
+                Description (optional)
+              </label>
+
+              <input
+                id="tr-description"
+                type="text"
+                name="description"
+                placeholder="e.g. M-Pesa to bank"
+                className={field}
+              />
+            </div>
+
+            {state.message && !state.success && (
+              <div
+                role="alert"
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 sm:col-span-2"
+              >
+                {state.message}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              From Account
-            </label>
-
-            <select
-              name="fromAccountId"
-              value={fromAccountId}
-              onChange={(event) => setFromAccountId(event.target.value)}
-              disabled={!selectedProfile}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 disabled:bg-gray-100"
-              required
-            >
-              <option value="">Select source account</option>
-
-              {selectedProfile?.accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              To Account
-            </label>
-
-            <select
-              name="toAccountId"
-              value={toAccountId}
-              onChange={(event) => setToAccountId(event.target.value)}
-              disabled={!selectedProfile}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 disabled:bg-gray-100"
-              required
-            >
-              <option value="">Select destination account</option>
-
-              {selectedProfile?.accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Amount (KES)
-            </label>
-
-            <input
-              type="number"
-              name="amount"
-              min="0.01"
-              step="0.01"
-              placeholder="0.00"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Date
-            </label>
-
-            <input
-              type="date"
-              name="date"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Description
-            </label>
-
-            <input
-              type="text"
-              name="description"
-              placeholder="e.g. M-Pesa to bank"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900"
-            />
-          </div>
-
-             {state.message && !state.success && (
-             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-              {state.message}
-             </div>
-              )}
-
-          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+          <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-neutral-800">
             <button
               type="button"
               disabled={isPending}
               onClick={() => setIsOpen(false)}
-              className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700"
+              className="min-h-9 rounded-lg border border-slate-300 px-4 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-900"
             >
               Cancel
             </button>
 
-           <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-            {isPending ? "Transferring..." : "Transfer"}
-          </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="min-h-9 rounded-lg bg-slate-900 px-5 text-[13px] font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+            >
+              {isPending ? "Transferring..." : "Transfer"}
+            </button>
           </div>
         </form>
       </div>
